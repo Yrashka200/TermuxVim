@@ -1,0 +1,6 @@
+prettier
+eslint
+typescript
+ts-node
+nodemon
+neovim

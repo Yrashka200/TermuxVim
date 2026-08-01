@@ -1,0 +1,33 @@
+theme = "onedark"
+[editor]
+line-number = "relative"
+mouse = true
+bufferline = "always"
+color-modes = true
+auto-save = true
+auto-format = true
+auto-pairs = true
+idle-timeout = 300
+completion-timeout = 200
+[editor.cursor-shape]
+insert = "bar"
+normal = "block"
+select = "underline"
+[editor.file-picker]
+hidden = false
+[editor.statusline]
+left = ["mode", "spinner", "file-name", "file-modification-indicator"]
+center = []
+right = ["diagnostics", "position", "file-encoding", "file-line-ending", "file-type"]
+[editor.lsp]
+display-messages = true
+auto-signature-help = true
+[keys.normal]
+esc = "collapse_selection"
+space = { w = ":write", q = ":quit", s = ":wq" }
+[keys.insert]
+C-s = ":write"
+C-q = ":quit"
+[keys.select]
+C-s = ":write"
+C-q = ":quit"
