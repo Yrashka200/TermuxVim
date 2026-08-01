@@ -1,2 +1,0 @@
-# TermuxVim
-My Termux Rise
