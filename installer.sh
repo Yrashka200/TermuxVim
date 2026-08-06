@@ -71,6 +71,21 @@ mkdir -p "$HOME/.local/share/termuxide/update"
 echo "$VERSION" > "$HOME/.local/share/termuxide/update/version"
 echo 'alias ide="bash main.sh"' >> ~/.bashrc
 echo 'alias menu="bash main.sh"' >> ~/.bashrc
+echo -e "${YELLOW}Do you want TermuxIDE to start automatically when Termux opens? [Y/n]${NC}"
+read -p "> " auto_start
+if [[ "$auto_start" != "n" && "$auto_start" != "N" ]]; then
+    if ! grep -q "bash main.sh" ~/.bashrc; then
+        echo '' >> ~/.bashrc
+        echo '# TermuxIDE auto-start' >> ~/.bashrc
+        echo 'if [ -f "$HOME/TermuxIDE/main.sh" ]; then' >> ~/.bashrc
+        echo '    cd ~/TermuxIDE && bash main.sh' >> ~/.bashrc
+        echo 'fi' >> ~/.bashrc
+        echo -e "${GREEN}✅ Auto-start enabled!${NC}"
+    fi
+else
+    echo -e "${YELLOW}Auto-start disabled. You can enable it later with:${NC}"
+    echo "  echo 'bash ~/TermuxIDE/main.sh' >> ~/.bashrc"
+fi
 source ~/.bashrc 2>/dev/null || true
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}✅ TermuxIDE v$VERSION installed successfully!${NC}"
@@ -84,5 +99,8 @@ echo -e "${YELLOW}Commands:${NC}"
 echo "  ide start  - Start IDE directly"
 echo "  ide config - Edit configuration"
 echo "  ide update - Check and install updates"
+echo ""
+echo -e "${YELLOW}To disable auto-start:${NC}"
+echo "  nano ~/.bashrc  # Remove the lines with 'main.sh'"
 echo ""
 echo -e "${BLUE}Enjoy your custom IDE!${NC}"
