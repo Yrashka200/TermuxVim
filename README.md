@@ -44,8 +44,8 @@ cd TermuxVim
 Run the installation script:
 
 ```bash
-chmod +x install.sh
-./install.sh
+chmod +x installer.sh
+./installer.sh
 ```
 
 ## Project Status
