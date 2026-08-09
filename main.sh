@@ -1,8 +1,10 @@
 #!/bin/bash
 CONFIG_DIR="$HOME/.config/termuxide"
 CONFIG_FILE="$CONFIG_DIR/ide.conf"
+source core/logger.sh 2>/dev/null
 source "$CONFIG_FILE" 2>/dev/null
 source core/ui.sh 2>/dev/null
+log_info "TermuxIDE main menu started"
 show_main_menu() {
     clear
     show_banner
@@ -16,21 +18,23 @@ show_main_menu() {
     echo -e "${GREEN}║  4) Install Language Support             ║${NC}"
     echo -e "${GREEN}║  5) Manage Modules                       ║${NC}"
     echo -e "${GREEN}║  6) Show System Info                     ║${NC}"
-    echo -e "${GREEN}║  7) Help                                 ║${NC}"
-    echo -e "${GREEN}║  8) Exit                                 ║${NC}"
+    echo -e "${GREEN}║  7) View Logs                            ║${NC}"
+    echo -e "${GREEN}║  8) Help                                 ║${NC}"
+    echo -e "${GREEN}║  9) Exit                                 ║${NC}"
     echo -e "${GREEN}╚═══════════════════════════════════════════╝${NC}"
     echo ""
-    read -p "Select option [1-8]: " choice
+    read -p "Select option [1-9]: " choice
     case $choice in
-        1) bash core/init.sh start ;;
-        2) bash core/config.sh edit ;;
-        3) bash core/update.sh check ;;
+        1) log_info "Starting IDE..."; bash core/init.sh start ;;
+        2) log_info "Editing config..."; bash core/config.sh edit ;;
+        3) log_info "Checking updates..."; bash core/update.sh check ;;
         4) install_language ;;
         5) manage_modules ;;
         6) show_system_info ;;
-        7) show_help ;;
-        8) echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
-        *) echo -e "${RED}Invalid option!${NC}"; sleep 1; show_main_menu ;;
+        7) show_logs; read -p "Press Enter to continue..."; show_main_menu ;;
+        8) show_help; read -p "Press Enter to continue..."; show_main_menu ;;
+        9) log_info "Exiting TermuxIDE"; echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
+        *) log_error "Invalid option: $choice"; echo -e "${RED}Invalid option!${NC}"; sleep 1; show_main_menu ;;
     esac
 }
 install_language() {
@@ -44,18 +48,19 @@ install_language() {
     echo "  6) Back"
     read -p "Choice: " lang_choice
     case $lang_choice in
-        1) bash modules/lsp/python.sh ;;
-        2) bash modules/lsp/node.sh ;;
-        3) bash modules/lsp/go.sh ;;
-        4) bash modules/lsp/rust.sh ;;
+        1) log_info "Installing Python..."; bash modules/lsp/python.sh || log_error "Python installation failed" ;;
+        2) log_info "Installing Node.js..."; bash modules/lsp/node.sh || log_error "Node.js installation failed" ;;
+        3) log_info "Installing Go..."; bash modules/lsp/go.sh || log_error "Go installation failed" ;;
+        4) log_info "Installing Rust..."; bash modules/lsp/rust.sh || log_error "Rust installation failed" ;;
         5) 
-            bash modules/lsp/python.sh
-            bash modules/lsp/node.sh
-            bash modules/lsp/go.sh
-            bash modules/lsp/rust.sh
+            log_info "Installing all languages..."
+            bash modules/lsp/python.sh || log_error "Python installation failed"
+            bash modules/lsp/node.sh || log_error "Node.js installation failed"
+            bash modules/lsp/go.sh || log_error "Go installation failed"
+            bash modules/lsp/rust.sh || log_error "Rust installation failed"
             ;;
         6) show_main_menu ;;
-        *) echo -e "${RED}Invalid!${NC}"; sleep 1 ;;
+        *) log_error "Invalid language choice: $lang_choice"; echo -e "${RED}Invalid!${NC}"; sleep 1 ;;
     esac
     show_main_menu
 }
@@ -71,14 +76,16 @@ manage_modules() {
         1) bash core/modules.sh list ;;
         2) 
             read -p "Module name: " mod_name
-            bash core/modules.sh install "$mod_name"
+            log_info "Installing module: $mod_name"
+            bash core/modules.sh install "$mod_name" || log_error "Failed to install module: $mod_name"
             ;;
         3)
             read -p "Module name: " mod_name
-            bash core/modules.sh remove "$mod_name"
+            log_info "Removing module: $mod_name"
+            bash core/modules.sh remove "$mod_name" || log_error "Failed to remove module: $mod_name"
             ;;
         4) show_main_menu ;;
-        *) echo -e "${RED}Invalid!${NC}"; sleep 1 ;;
+        *) log_error "Invalid module choice: $mod_choice"; echo -e "${RED}Invalid!${NC}"; sleep 1 ;;
     esac
     show_main_menu
 }
@@ -95,13 +102,18 @@ show_system_info() {
     echo ""
     echo -e "${YELLOW}Installed Languages:${NC}"
     if [ -f ~/.config/termuxide/lsp.conf ]; then
-        cat ~/.config/termuxide/lsp.conf | grep LSP_ | sed 's/LSP_//g' | sed 's/=true//g'
+        cat ~/.config/termuxide/lsp.conf | grep LSP_ | sed 's/LSP_//g' | sed 's/=true//g' || echo "  None"
     else
         echo "  None installed"
     fi
     echo ""
     echo -e "${YELLOW}Disk Usage:${NC}"
-    df -h /data 2>/dev/null | tail -1
+    df -h /data 2>/dev/null | tail -1 || echo "  N/A"
+    echo ""
+    echo -e "${YELLOW}Log Files:${NC}"
+    echo "  Install log: ~/.local/share/termuxide/logs/install.log"
+    echo "  Error log: ~/.local/share/termuxide/logs/errors.log"
+    echo "  Total errors: $(wc -l < ~/.local/share/termuxide/logs/errors.log 2>/dev/null || echo '0')"
     echo ""
     read -p "Press Enter to continue..."
     show_main_menu
