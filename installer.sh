@@ -7,7 +7,31 @@ RED='\033[0;31m'
 NC='\033[0m'
 PROJECT_DIR="$(pwd)"
 VERSION="1.0.0"
+LOG_DIR="$HOME/.local/share/termuxide/logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/install.log"
+ERROR_LOG="$LOG_DIR/errors.log"
 echo "$VERSION" > VERSION
+log_info() {
+    local msg="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo -e "${GREEN}[INFO]${NC} $msg"
+    echo "[$timestamp] [INFO] $msg" >> "$LOG_FILE"
+}
+log_error() {
+    local msg="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo -e "${RED}[ERROR]${NC} $msg" >&2
+    echo "[$timestamp] [ERROR] $msg" >> "$ERROR_LOG"
+    echo "[$timestamp] [ERROR] $msg" >> "$LOG_FILE"
+}
+log_success() {
+    local msg="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo -e "${GREEN}[SUCCESS]${NC} $msg"
+    echo "[$timestamp] [SUCCESS] $msg" >> "$LOG_FILE"
+}
+trap 'log_error "Installation failed at step $STEP"' ERR
 echo -e "${BLUE}"
 cat << "EOF"
   _______            _  __     ___ ___
@@ -20,24 +44,62 @@ cat << "EOF"
     Version 1.0.0
 EOF
 echo -e "${NC}"
-echo -e "${GREEN}[1/6] Updating system...${NC}"
-pkg update -y && pkg upgrade -y
-echo -e "${GREEN}[2/6] Installing core dependencies...${NC}"
-pkg install -y git curl wget tmux fzf ripgrep fd tree htop openssh termux-api
-echo -e "${GREEN}[3/6] Select editor:${NC}"
+log_info "Starting TermuxIDE installation v$VERSION"
+log_info "Project directory: $PROJECT_DIR"
+STEP="system_update"
+log_info "[1/6] Updating system packages..."
+if ! pkg update -y && pkg upgrade -y; then
+    log_error "Failed to update system packages"
+    exit 1
+fi
+log_success "System updated successfully"
+STEP="core_dependencies"
+log_info "[2/6] Installing core dependencies..."
+if ! pkg install -y git curl wget tmux fzf ripgrep fd tree htop openssh termux-api; then
+    log_error "Failed to install core dependencies"
+    exit 1
+fi
+log_success "Core dependencies installed"
+STEP="editor_selection"
+log_info "[3/6] Selecting editor..."
+echo -e "${YELLOW}Select editor:${NC}"
 echo "  1) Helix (recommended - built-in LSP)"
 echo "  2) Micro (lightweight)"
 echo "  3) Neovim (powerful)"
 echo "  4) Skip"
 read -p "Choice [1-4]: " editor_choice
+log_info "Editor choice: $editor_choice"
 case $editor_choice in
-    1) bash modules/editor/install.sh helix ;;
-    2) bash modules/editor/install.sh micro ;;
-    3) bash modules/editor/install.sh neovim ;;
-    4) echo -e "${YELLOW}Skipping editor${NC}" ;;
-    *) bash modules/editor/install.sh helix ;;
+    1) 
+        log_info "Installing Helix..."
+        if ! bash modules/editor/install.sh helix; then
+            log_error "Failed to install Helix"
+            exit 1
+        fi
+        ;;
+    2) 
+        log_info "Installing Micro..."
+        if ! bash modules/editor/install.sh micro; then
+            log_error "Failed to install Micro"
+            exit 1
+        fi
+        ;;
+    3) 
+        log_info "Installing Neovim..."
+        if ! bash modules/editor/install.sh neovim; then
+            log_error "Failed to install Neovim"
+            exit 1
+        fi
+        ;;
+    4) log_warning "Skipping editor installation" ;;
+    *) 
+        log_info "Default: Installing Helix..."
+        bash modules/editor/install.sh helix ;;
 esac
-echo -e "${GREEN}[4/6] Install language support:${NC}"
+log_success "Editor installed"
+STEP="language_selection"
+log_info "[4/6] Installing language support..."
+echo -e "${YELLOW}Install language support:${NC}"
 echo "  1) Python"
 echo "  2) Node.js"
 echo "  3) Go"
@@ -45,28 +107,57 @@ echo "  4) Rust"
 echo "  5) All"
 echo "  6) Skip"
 read -p "Enter numbers separated by space: " -a lang_choices
+log_info "Language choices: ${lang_choices[@]}"
 for choice in "${lang_choices[@]}"; do
     case $choice in
-        1) bash modules/lsp/python.sh ;;
-        2) bash modules/lsp/node.sh ;;
-        3) bash modules/lsp/go.sh ;;
-        4) bash modules/lsp/rust.sh ;;
+        1) 
+            log_info "Installing Python..."
+            bash modules/lsp/python.sh || log_error "Python installation failed"
+            ;;
+        2) 
+            log_info "Installing Node.js..."
+            bash modules/lsp/node.sh || log_error "Node.js installation failed"
+            ;;
+        3) 
+            log_info "Installing Go..."
+            bash modules/lsp/go.sh || log_error "Go installation failed"
+            ;;
+        4) 
+            log_info "Installing Rust..."
+            bash modules/lsp/rust.sh || log_error "Rust installation failed"
+            ;;
         5)
-            bash modules/lsp/python.sh
-            bash modules/lsp/node.sh
-            bash modules/lsp/go.sh
-            bash modules/lsp/rust.sh
+            log_info "Installing all languages..."
+            bash modules/lsp/python.sh || log_error "Python installation failed"
+            bash modules/lsp/node.sh || log_error "Node.js installation failed"
+            bash modules/lsp/go.sh || log_error "Go installation failed"
+            bash modules/lsp/rust.sh || log_error "Rust installation failed"
             break
             ;;
-        6) echo -e "${YELLOW}Skipping languages${NC}" ;;
+        6) log_warning "Skipping language installation" ;;
     esac
 done
-echo -e "${GREEN}[5/6] Installing additional tools...${NC}"
-bash modules/tools/install.sh
-bash modules/terminal/install.sh
-bash modules/git/install.sh
-echo -e "${GREEN}[6/6] Generating configuration...${NC}"
-bash core/config.sh generate
+STEP="additional_tools"
+log_info "[5/6] Installing additional tools..."
+if ! bash modules/tools/install.sh; then
+    log_error "Failed to install tools"
+    exit 1
+fi
+if ! bash modules/terminal/install.sh; then
+    log_error "Failed to install terminal"
+    exit 1
+fi
+if ! bash modules/git/install.sh; then
+    log_error "Failed to install git"
+    exit 1
+fi
+log_success "Additional tools installed"
+STEP="configuration"
+log_info "[6/6] Generating configuration..."
+if ! bash core/config.sh generate; then
+    log_error "Failed to generate configuration"
+    exit 1
+fi
 mkdir -p "$HOME/.local/share/termuxide/update"
 echo "$VERSION" > "$HOME/.local/share/termuxide/update/version"
 echo 'alias ide="bash main.sh"' >> ~/.bashrc
@@ -80,13 +171,13 @@ if [[ "$auto_start" != "n" && "$auto_start" != "N" ]]; then
         echo 'if [ -f "$HOME/TermuxIDE/main.sh" ]; then' >> ~/.bashrc
         echo '    cd ~/TermuxIDE && bash main.sh' >> ~/.bashrc
         echo 'fi' >> ~/.bashrc
-        echo -e "${GREEN}✅ Auto-start enabled!${NC}"
+        log_success "Auto-start enabled"
     fi
 else
-    echo -e "${YELLOW}Auto-start disabled. You can enable it later with:${NC}"
-    echo "  echo 'bash ~/TermuxIDE/main.sh' >> ~/.bashrc"
+    log_info "Auto-start disabled by user"
 fi
 source ~/.bashrc 2>/dev/null || true
+log_success "TermuxIDE v$VERSION installed successfully!"
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}✅ TermuxIDE v$VERSION installed successfully!${NC}"
 echo -e "${GREEN}========================================${NC}"
@@ -99,6 +190,10 @@ echo -e "${YELLOW}Commands:${NC}"
 echo "  ide start  - Start IDE directly"
 echo "  ide config - Edit configuration"
 echo "  ide update - Check and install updates"
+echo ""
+echo -e "${YELLOW}Logs:${NC}"
+echo "  View logs: cat ~/.local/share/termuxide/logs/install.log"
+echo "  View errors: cat ~/.local/share/termuxide/logs/errors.log"
 echo ""
 echo -e "${YELLOW}To disable auto-start:${NC}"
 echo "  nano ~/.bashrc  # Remove the lines with 'main.sh'"
