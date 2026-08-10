@@ -31,6 +31,12 @@ log_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $msg"
     echo "[$timestamp] [SUCCESS] $msg" >> "$LOG_FILE"
 }
+log_warning() {
+    local msg="$1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo -e "${YELLOW}[WARNING]${NC} $msg"
+    echo "[$timestamp] [WARNING] $msg" >> "$LOG_FILE"
+}
 trap 'log_error "Installation failed at step $STEP"' ERR
 echo -e "${BLUE}"
 cat << "EOF"
@@ -91,10 +97,13 @@ case $editor_choice in
             exit 1
         fi
         ;;
-    4) log_warning "Skipping editor installation" ;;
+    4) 
+        log_warning "Skipping editor installation" 
+        ;;
     *) 
         log_info "Default: Installing Helix..."
-        bash modules/editor/install.sh helix ;;
+        bash modules/editor/install.sh helix 
+        ;;
 esac
 log_success "Editor installed"
 STEP="language_selection"
@@ -134,7 +143,12 @@ for choice in "${lang_choices[@]}"; do
             bash modules/lsp/rust.sh || log_error "Rust installation failed"
             break
             ;;
-        6) log_warning "Skipping language installation" ;;
+        6) 
+            log_warning "Skipping language installation" 
+            ;;
+        *)
+            log_warning "Invalid choice: $choice, skipping"
+            ;;
     esac
 done
 STEP="additional_tools"
@@ -190,6 +204,10 @@ echo -e "${YELLOW}Commands:${NC}"
 echo "  ide start  - Start IDE directly"
 echo "  ide config - Edit configuration"
 echo "  ide update - Check and install updates"
+echo ""
+echo -e "${YELLOW}Simple Editor:${NC}"
+echo "  sedit <file>  - Edit/create file"
+echo "  sopen <file>  - Open and view file"
 echo ""
 echo -e "${YELLOW}Logs:${NC}"
 echo "  View logs: cat ~/.local/share/termuxide/logs/install.log"
