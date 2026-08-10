@@ -12,29 +12,82 @@ show_main_menu() {
     echo -e "${GREEN}╔═══════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║              MAIN MENU                    ║${NC}"
     echo -e "${GREEN}╠═══════════════════════════════════════════╣${NC}"
-    echo -e "${GREEN}║  1) Start IDE                            ║${NC}"
-    echo -e "${GREEN}║  2) Edit Configuration                   ║${NC}"
-    echo -e "${GREEN}║  3) Check for Updates                    ║${NC}"
-    echo -e "${GREEN}║  4) Install Language Support             ║${NC}"
-    echo -e "${GREEN}║  5) Manage Modules                       ║${NC}"
-    echo -e "${GREEN}║  6) Show System Info                     ║${NC}"
-    echo -e "${GREEN}║  7) View Logs                            ║${NC}"
-    echo -e "${GREEN}║  8) Help                                 ║${NC}"
-    echo -e "${GREEN}║  9) Exit                                 ║${NC}"
+    echo -e "${GREEN}║  1) Start IDE (Helix/Micro/Neovim)       ║${NC}"
+    echo -e "${GREEN}║  2) Simple Editor (Command-line)         ║${NC}"
+    echo -e "${GREEN}║  3) Edit Configuration                   ║${NC}"
+    echo -e "${GREEN}║  4) Check for Updates                    ║${NC}"
+    echo -e "${GREEN}║  5) Install Language Support             ║${NC}"
+    echo -e "${GREEN}║  6) Manage Modules                       ║${NC}"
+    echo -e "${GREEN}║  7) Show System Info                     ║${NC}"
+    echo -e "${GREEN}║  8) View Logs                            ║${NC}"
+    echo -e "${GREEN}║  9) Help                                 ║${NC}"
+    echo -e "${GREEN}║  10) Exit                                ║${NC}"
     echo -e "${GREEN}╚═══════════════════════════════════════════╝${NC}"
     echo ""
-    read -p "Select option [1-9]: " choice
+    read -p "Select option [1-10]: " choice
     case $choice in
         1) log_info "Starting IDE..."; bash core/init.sh start ;;
-        2) log_info "Editing config..."; bash core/config.sh edit ;;
-        3) log_info "Checking updates..."; bash core/update.sh check ;;
-        4) install_language ;;
-        5) manage_modules ;;
-        6) show_system_info ;;
-        7) show_logs; read -p "Press Enter to continue..."; show_main_menu ;;
-        8) show_help; read -p "Press Enter to continue..."; show_main_menu ;;
-        9) log_info "Exiting TermuxIDE"; echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
+        2) log_info "Starting Simple Editor..."; simple_editor_menu ;;
+        3) log_info "Editing config..."; bash core/config.sh edit ;;
+        4) log_info "Checking updates..."; bash core/update.sh check ;;
+        5) install_language ;;
+        6) manage_modules ;;
+        7) show_system_info ;;
+        8) show_logs; read -p "Press Enter to continue..."; show_main_menu ;;
+        9) show_help; read -p "Press Enter to continue..."; show_main_menu ;;
+        10) log_info "Exiting TermuxIDE"; echo -e "${GREEN}Goodbye!${NC}"; exit 0 ;;
         *) log_error "Invalid option: $choice"; echo -e "${RED}Invalid option!${NC}"; sleep 1; show_main_menu ;;
+    esac
+}
+simple_editor_menu() {
+    clear
+    echo -e "${BLUE}╔═══════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║      COMMAND-LINE EDITOR MENU            ║${NC}"
+    echo -e "${BLUE}╚═══════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${YELLOW}Commands:${NC}"
+    echo "  1) Create new file"
+    echo "  2) Open existing file"
+    echo "  3) Edit file (with content display)"
+    echo "  4) Back to main menu"
+    echo ""
+    read -p "Choice [1-4]: " editor_choice
+    case $editor_choice in
+        1)
+            echo -e "${YELLOW}Enter filename:${NC}"
+            read -r filename
+            if [ -z "$filename" ]; then
+                filename="temp_$(date +%s).txt"
+            fi
+            touch "$filename"
+            bash modules/editor/simple_editor.sh edit "$filename"
+            simple_editor_menu
+            ;;
+        2)
+            echo -e "${YELLOW}Enter file path:${NC}"
+            read -r filepath
+            if [ -f "$filepath" ]; then
+                bash modules/editor/simple_editor.sh open "$filepath"
+                read -p "Press Enter to continue..."
+            else
+                echo -e "${RED}File not found!${NC}"
+                sleep 1
+            fi
+            simple_editor_menu
+            ;;
+        3)
+            echo -e "${YELLOW}Enter filename to edit:${NC}"
+            read -r filepath
+            if [ -f "$filepath" ] || [ -z "$filepath" ]; then
+                bash modules/editor/simple_editor.sh edit "$filepath"
+            else
+                echo -e "${RED}File not found!${NC}"
+                sleep 1
+            fi
+            simple_editor_menu
+            ;;
+        4) show_main_menu ;;
+        *) echo -e "${RED}Invalid option!${NC}"; sleep 1; simple_editor_menu ;;
     esac
 }
 install_language() {
